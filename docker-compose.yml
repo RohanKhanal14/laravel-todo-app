@@ -1,0 +1,72 @@
+version: '3.9'
+
+services:
+  # Laravel App (PHP-FPM)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel-app
+    restart: unless-stopped
+    working_dir: /var/www
+    networks:
+      - laravel
+    volumes:
+      - ./:/var/www
+    ports:
+      - "9000:9000"
+    depends_on:
+      - db
+      - redis
+
+  # MySQL Database
+  db:
+    image: mysql:8.3
+    container_name: mysql-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - laravel
+
+  # Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: redis-cache
+    restart: unless-stopped
+    ports:
+      - "6378:6379"
+    networks:
+      - laravel
+
+  # Nginx Web Server
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-web
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8080:80"
+    depends_on:
+      - app
+    networks:
+      - laravel
+
+# Networks
+networks:
+  laravel:
+    driver: bridge
+
+# Volumes
+volumes:
+  db_data:
+    driver: local
